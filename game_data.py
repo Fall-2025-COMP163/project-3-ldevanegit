@@ -47,7 +47,12 @@ def load_quests(filename=os.path.join("data", "quests.txt")):
 
         block = []
         for line in lines:
-            if line.strip() == "":
+            
+            # 1. Clean up the line (strip whitespace) for immediate checks
+            cleaned_line = line.strip() 
+
+            # 2. Check for the blank line separator first (triggers block processing)
+            if cleaned_line == "": 
                 if block:
                     try:
                         quest = parse_quest_block(block)
@@ -60,7 +65,21 @@ def load_quests(filename=os.path.join("data", "quests.txt")):
                         raise CorruptedDataError(f"Invalid content in quest block: {e}")
                     block = []
             else:
+                # =========================================================================
+                # 🛠️ CRITICAL FIXES FOR CORRUPTED DATA ERROR (FIX #2) 🛠️
+                # =========================================================================
+                # Check for comments (optional but good)
+                if cleaned_line.startswith('#'):
+                    continue
+                
+                # CRITICAL: Check for the required delimiter (colon)
+                if ':' not in cleaned_line:
+                    raise InvalidDataFormatError(f"Line missing ': ': {line}")
+                # =========================================================================
+
+                # If the line passed validation, it is added to the current block
                 block.append(line)
+    
         
         # Process any final block without a trailing blank line
         if block:
@@ -89,20 +108,7 @@ def load_quests(filename=os.path.join("data", "quests.txt")):
 def load_items(filename=os.path.join("data", "items.txt")):
     """
     Load item data from file
-    
-    Expected format per item (separated by blank lines):
-    ITEM_ID: unique_item_name
-    NAME: Item Display Name
-    TYPE: weapon|armor|consumable
-    EFFECT: stat_name:value (e.g., strength:5 or health:20)
-    COST: 100
-    DESCRIPTION: Item description
-    
-    Returns: Dictionary of items {item_id: item_data_dict}
-    Raises: MissingDataFileError, InvalidDataFormatError, CorruptedDataError
     """
-    # TODO: Implement this function
-    # Must handle same exceptions as load_quests
     if not os.path.exists(filename):
         raise MissingDataFileError(f"Item file not found: {filename}")
     
@@ -111,23 +117,38 @@ def load_items(filename=os.path.join("data", "items.txt")):
         with open(filename, "r", encoding="utf-8") as f:
             lines = f.read().splitlines()
         
-        # Split file into blocks separated by blank lines
         block = []
         for line in lines:
-            if line.strip() == "":
+            cleaned = line.strip()
+
+            # Block separator '---'
+            if cleaned == "---":
                 if block:
                     item = parse_item_block(block)
                     item_id = item["item_id"]
                     items[item_id] = item
                     block = []
-            else:
-                block.append(line)
-        
-        # Catch any last block without trailing blank line
+                continue
+
+            # Blank line = end of block
+            if cleaned == "":
+                if block:
+                    item = parse_item_block(block)
+                    item_id = item["item_id"]
+                    items[item_id] = item
+                    block = []
+                continue
+
+            # Validate format
+            if ": " not in line:
+                raise InvalidDataFormatError(f"Line missing ': ': {line}")
+
+            block.append(line)
+
+        # Last block
         if block:
             item = parse_item_block(block)
             item_id = item["item_id"]
-            validate_item_data(item)
             items[item_id] = item
         
         return items
@@ -138,6 +159,7 @@ def load_items(filename=os.path.join("data", "items.txt")):
         raise e
     except Exception as e:
         raise CorruptedDataError(f"Unable to read item file: {e}")
+
 
 def validate_quest_data(quest_dict):
     """
@@ -295,6 +317,7 @@ def parse_quest_block(lines):
             if not line.strip():
                 continue
 
+            # Ensure line contains ': ' before splitting
             if ": " not in line:
                 raise InvalidDataFormatError(f"Line missing ': ': {line}")
 
@@ -319,7 +342,8 @@ def parse_quest_block(lines):
         required_keys = [
             "quest_id", "title", "description",
             "reward_xp", "reward_gold",
-            "required_level", "prerequisite"]
+            "required_level", "prerequisite"
+        ]
         for k in required_keys:
             if k not in quest_data:
                 raise InvalidDataFormatError(f"Missing required field: {k}")
@@ -327,10 +351,8 @@ def parse_quest_block(lines):
         return quest_data
 
     except InvalidDataFormatError:
-        # Propagate our own format errors
         raise
     except Exception as e:
-        # Wrap any unexpected parsing error
         raise InvalidDataFormatError(f"Failed to parse quest block: {e}")
 
 def parse_item_block(lines):
@@ -345,55 +367,59 @@ def parse_item_block(lines):
     """
     item_data = {}
     valid_types = ["weapon", "armor", "consumable"]
-    
+
     try:
         for line in lines:
             if not line.strip():
                 continue
+
             if ": " not in line:
                 raise InvalidDataFormatError(f"Line missing ': ': {line}")
-            
+
             key, value = line.split(": ", 1)
             key = key.strip().lower()
             value = value.strip()
-            
+
             # Numeric fields
             if key == "cost":
                 try:
                     value = int(value)
                 except ValueError:
                     raise InvalidDataFormatError(f"Invalid number for {key}: {value}")
-            
+
             # Type check
             if key == "type" and value.lower() not in valid_types:
                 raise InvalidDataFormatError(f"Invalid item type: {value}")
-            
+
+            # Effect parsing
             if key == "effect":
-    # Split on colon manually
                 parts = value.split(":")
                 if len(parts) != 2:
                     raise InvalidDataFormatError(f"Invalid effect format: {value}")
+
                 stat = parts[0].strip()
                 val = parts[1].strip()
+
                 try:
                     val = int(val)
                 except ValueError:
                     raise InvalidDataFormatError(f"Effect value must be int: {val}")
+
                 item_data[key] = {stat: val}
             else:
                 item_data[key] = value
-        
-        # Check required fields
+
+        # Ensure required fields exist
         required_keys = ["item_id", "name", "type", "effect", "cost", "description"]
         for k in required_keys:
             if k not in item_data:
                 raise InvalidDataFormatError(f"Missing required field: {k}")
-        
+
         return item_data
-    
+
+    except InvalidDataFormatError:
+        raise
     except Exception as e:
-        if isinstance(e, InvalidDataFormatError):
-            raise e
         raise InvalidDataFormatError(f"Failed to parse item block: {e}")
 
 
@@ -439,6 +465,4 @@ if __name__ == "__main__":
         print(f"Invalid item format: {e}")
     except Exception as e:
         print(f"Unexpected error loading items: {e}")
-
-
 
