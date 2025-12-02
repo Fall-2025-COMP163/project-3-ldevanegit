@@ -214,20 +214,21 @@ def validate_item_data(item_dict):
     if not isinstance(item_dict["cost"], int):
         raise InvalidDataFormatError(f"Item cost must be an integer, got {item_dict['cost']}")
     # Check effect is a single-stat dictionary
-    effect = item_dict["effect"]
-    # If effect is a string, parse it into a single-stat dictionary
+    effect = item_dict.get("effect")  # get effect from dict
+
+# If effect is a string, parse it into a single-stat dictionary
     if isinstance(effect, str):
         parts = effect.split(":")
         if len(parts) != 2:
             raise InvalidDataFormatError(f"Invalid effect format: {effect}")
-        stat = parts[0].strip()
+        stat = parts[0].strip().lower()  # normalize stat name
         try:
             val = int(parts[1].strip())
         except ValueError:
             raise InvalidDataFormatError(f"Effect value must be int: {parts[1].strip()}")
-        effect = {stat: val}
-        item_dict["effect"] = effect  # update dictionary for downstream
-        # Now check effect is a proper single-stat dictionary
+    
+        item_dict["effect"] = {stat: val}  # replace string with dict in the original dict
+        effect = item_dict["effect"]       # reassign for further checks
     if not isinstance(effect, dict) or len(effect) != 1:
         raise InvalidDataFormatError(f"Effect must be a single stat dictionary, got: {effect}")
     
@@ -475,4 +476,6 @@ if __name__ == "__main__":
         print(f"Invalid item format: {e}")
     except Exception as e:
         print(f"Unexpected error loading items: {e}")
+
+
 
