@@ -66,11 +66,11 @@ def create_character(name, character_class):
     
     stats = base_stats[character_class]
     
-    # Create character dictionary
+    # Create character dictionary with base stats
     character = {
         "name": name,
         "class": character_class,
-        "level": 1,
+        "level": 1, #base level
         "health": stats["health"],
         "max_health": stats["health"],
         "strength": stats["strength"],
@@ -79,8 +79,9 @@ def create_character(name, character_class):
         "gold": 100,
         "inventory": [],
         "active_quests": [],
-        "completed_quests": []
-    }
+        "completed_quests": [],
+        'equipped_weapon': None,
+        'equipped_armor': None}
     
     return character
 
