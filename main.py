@@ -83,6 +83,9 @@ def new_game():
     try:
         char_class = class_map[class_choice]
         current_character = character_manager.create_character(name, char_class)
+
+        current_character.setdefault('level', 1) #ensures character starts at at least level 1
+        
         print(f"Character '{name}' the {char_class} created!")
         game_loop()
     except (InvalidCharacterClassError, KeyError) as e:
@@ -112,6 +115,9 @@ def load_game():
         index = int(choice) - 1
         selected_name = saved_list[index]
         current_character = character_manager.load_character(selected_name)
+
+        current_character.setdefault('level', 1) #ensures character loads at at least level 1
+
         print(f"Loaded character '{selected_name}'!")
         game_loop()
     except (CharacterNotFoundError, SaveFileCorruptedError, IndexError, ValueError) as e:
