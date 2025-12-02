@@ -215,19 +215,29 @@ def validate_item_data(item_dict):
         raise InvalidDataFormatError(f"Item cost must be an integer, got {item_dict['cost']}")
     # Check effect is a single-stat dictionary
     effect = item_dict["effect"]
+    # If effect is a string, parse it into a single-stat dictionary
+    if isinstance(effect, str):
+        parts = effect.split(":")
+        if len(parts) != 2:
+            raise InvalidDataFormatError(f"Invalid effect format: {effect}")
+        stat = parts[0].strip()
+        try:
+            val = int(parts[1].strip())
+        except ValueError:
+            raise InvalidDataFormatError(f"Effect value must be int: {parts[1].strip()}")
+        effect = {stat: val}
+        item_dict["effect"] = effect  # update dictionary for downstream
+        # Now check effect is a proper single-stat dictionary
     if not isinstance(effect, dict) or len(effect) != 1:
         raise InvalidDataFormatError(f"Effect must be a single stat dictionary, got: {effect}")
     
     # Validate the single stat and value without unpacking
-    keys = list(effect.keys())
-    stat_key = keys[0]
-    stat_val = effect[stat_key]
-    
+    stat_key, stat_val = list(effect.items())[0]
     if not isinstance(stat_key, str):
         raise InvalidDataFormatError(f"Effect stat must be a string, got: {stat_key}")
     if not isinstance(stat_val, int):
         raise InvalidDataFormatError(f"Effect value must be an integer, got: {stat_val}")
-    
+
     return True
 
 def create_default_data_files():
@@ -398,14 +408,14 @@ def parse_item_block(lines):
                     raise InvalidDataFormatError(f"Invalid effect format: {value}")
 
                 stat = parts[0].strip()
-                val = parts[1].strip()
+                
 
                 try:
-                    val = int(val)
+                    stat_value = int(parts[1].strip())
                 except ValueError:
-                    raise InvalidDataFormatError(f"Effect value must be int: {val}")
+                    raise InvalidDataFormatError(f"Effect value must be int: {parts[1].strip()}")
 
-                item_data[key] = {stat: val}
+                item_data[key] = {stat: stat_value}
             else:
                 item_data[key] = value
 
