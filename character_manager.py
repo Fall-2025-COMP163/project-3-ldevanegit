@@ -435,4 +435,3 @@ if __name__ == "__main__":
     
     # Cleanup test save
     delete_character("Testhero")
-
