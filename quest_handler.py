@@ -57,8 +57,8 @@ def accept_quest(character, quest_id, quest_data_dict):
     if character['level'] < quest['required_level']:
         raise InsufficientLevelError(f"Level {quest['required_level']} required for this quest!")
     
-    prereq = quest.get('prerequisite', 'NONE')
-    if prereq != 'NONE' and prereq not in character.get('completed_quests', []):
+    prereq = quest.get('prerequisite', None)
+    if prereq and prereq not in character.get('completed_quests', []):
         raise QuestRequirementsNotMetError(f"Prerequisite quest '{prereq}' not completed!")
 
     character.setdefault('active_quests', []).append(quest_id)
@@ -80,8 +80,10 @@ def complete_quest(character, quest_id, quest_data_dict):
     Returns: Dictionary with reward information
     Raises:
         QuestNotFoundError if quest_id not in quest_data_dict
-        QuestNotActiveError if quest not in active_quests
-    """
+        QuestNotActiveError if quest not in active_quests"""
+    
+    character.setdefault('experience', 0)
+    character.setdefault('gold', 0)
     if quest_id not in quest_data_dict:
         raise QuestNotFoundError(f"Quest '{quest_id}' not found!")
     
@@ -179,8 +181,8 @@ def can_accept_quest(character, quest_id, quest_data_dict):
         return False
     if character['level'] < quest['required_level']:
         return False
-    prereq = quest.get('prerequisite', 'NONE')
-    if prereq != 'NONE' and prereq not in character.get('completed_quests', []):
+    prereq = quest.get('prerequisite', None)
+    if prereq is not None and prereq not in character.get('completed_quests', []):
         return False
     return True
 
@@ -199,10 +201,10 @@ def get_quest_prerequisite_chain(quest_id, quest_data_dict):
     
     chain = []
     current = quest_id
-    while current != 'NONE':
+    while current is not None:
         chain.insert(0, current)
-        prereq = quest_data_dict[current].get('prerequisite', 'NONE')
-        if prereq == 'NONE':
+        prereq = quest_data_dict[current].get('prerequisite', None)
+        if prereq is None:
             break
         current = prereq
     return chain
@@ -353,4 +355,5 @@ if __name__ == "__main__":
         print("PASS: slime_hunt accepted.")
     except Exception as e:
         print(f"Cannot accept: {e}")
+
 
