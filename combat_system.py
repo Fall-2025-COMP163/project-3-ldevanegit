@@ -449,4 +449,3 @@ if __name__ == "__main__":
         print(f"Cannot start battle: {e}")
     except Exception as e:
         print(f"Unexpected error during battle: {e}")
-
