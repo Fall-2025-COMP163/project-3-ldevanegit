@@ -168,14 +168,26 @@ def load_character(character_name, save_directory="data/save_games"):
     
     try:
         with open(filename, "r") as f:
-            for line in f:
-                if not line.strip():
+            for line in f: # <-- Correctly indented loop start
+                line = line.strip()
+
+                # Skip blank lines and comments
+                if not line or line.startswith('#'):
                     continue
-                if ": " not in line:
-                    raise InvalidSaveDataError(f"Invalid line format: {line}")
+            
+                parts = line.split(':', 1)
+        
                 
-                key, value = line.strip().split(": ", 1)
+                
+                
+                # Check if the split operation resulted in exactly 2 parts (key and value).
+                if len(parts) != 2:
+                    raise SaveFileCorruptedError(f"Malformed line in save file: '{line}'")
+            
+                # Correctly unpack and clean key/value
+                key, value = parts
                 key = key.lower()
+                value = value.strip()
                 
                 # Convert lists from comma-separated strings
                 if key in ["inventory", "active_quests", "completed_quests"]:
@@ -189,7 +201,7 @@ def load_character(character_name, save_directory="data/save_games"):
                 else:
                     character[key] = value
         
-        # Validate the loaded character
+        # Validate the loaded character (runs after the loop finishes)
         validate_character_data(character)
         return character
     
@@ -197,9 +209,8 @@ def load_character(character_name, save_directory="data/save_games"):
         # Data format issues
         raise e
     except Exception as e:
-        # Any other file reading issue
+        # Any other file reading issue (e.g., UnicodeDecodeError, etc.)
         raise SaveFileCorruptedError(f"Failed to read save file: {e}")
-
 def list_saved_characters(save_directory="data/save_games"):
     """
     Get list of all saved character names
