@@ -13,8 +13,7 @@ from custom_exceptions import (
     InventoryFullError,
     ItemNotFoundError,
     InsufficientResourcesError,
-    InvalidItemTypeError
-)
+    InvalidItemTypeError)
 
 # Maximum inventory size
 MAX_INVENTORY_SIZE = 20
@@ -174,7 +173,7 @@ def equip_weapon(character, item_id, item_data):
 
     # Unequip current weapon if exists
     if character.get("equipped_weapon") is not None:
-        unequip_weapon(character,item_data_dict)
+        unequip_weapon(character,item_data)
 
     # Apply weapon stats
     parsed = parse_item_effect(item_data["effect"])
@@ -217,7 +216,7 @@ def equip_armor(character, item_id, item_data):
 
     # Unequip current armor if exists
     if character.get("equipped_armor") is not None:
-        unequip_armor(character,item_data_dict)
+        unequip_armor(character,item_data)
 
     # Apply armor stats
     parsed = parse_item_effect(item_data["effect"])
@@ -232,7 +231,7 @@ def equip_armor(character, item_id, item_data):
     return (f"Equipped armor: {item_id}")
 
 
-def unequip_weapon(character, item_data_dict):
+def unequip_weapon(character, item_data):
     """
     Remove equipped weapon and return it to inventory
     
@@ -244,13 +243,14 @@ def unequip_weapon(character, item_data_dict):
         return None
 
     weapon_id = character["equipped_weapon"]
-    weapon_data = item_data_dict[weapon_id]
+    
 
     # Remove weapon stat bonus
-    parsed = parse_item_effect(weapon_data["effect"])
+    parsed = parse_item_effect(item_data["effect"])
     stat_name = parsed[0]
     value = parsed[1]
     apply_stat_effect(character, stat_name, -value)
+
 
     # Check inventory space
     if len(character.get("inventory", [])) >= MAX_INVENTORY_SIZE:
@@ -262,7 +262,7 @@ def unequip_weapon(character, item_data_dict):
 
     return weapon_id
 
-def unequip_armor(character,item_data_dict):
+def unequip_armor(character,item_data):
     """
     Remove equipped armor and return it to inventory
     
@@ -273,10 +273,10 @@ def unequip_armor(character,item_data_dict):
         return None
 
     armor_id = character["equipped_armor"]
-    armor_data = item_data_dict[armor_id]
+    
 
     # Remove armor stat bonus
-    parsed = parse_item_effect(armor_data["effect"])
+    parsed = parse_item_effect(item_data["effect"])
     stat_name = parsed[0]
     value = parsed[1]
     apply_stat_effect(character, stat_name, -value)
@@ -375,11 +375,8 @@ def apply_stat_effect(character, stat_name, value):
     character[stat_name] += value
 
     # Clamp health
-    if stat_name == "health":
-        if character["health"] > character["max_health"]:
-            character["health"] = character["max_health"]
-        elif character["health"] < 0:
-            character["health"] = 0
+    if stat_name == "max_health" and character["health"] > character["max_health"]:
+        character["health"] = character["max_health"]
 
 def display_inventory(character, item_data_dict):
     """
@@ -422,11 +419,10 @@ if __name__ == "__main__":
         "strength": 5,
         "magic": 3,
         "equipped_weapon": None,
-        "equipped_armor": None
-    }
+        "equipped_armor": None}
 
     # Test item data dictionary
-    item_data_dict = {
+    item_data = {
         "health_potion": {
             "name": "Health Potion",
             "type": "consumable",
@@ -443,75 +439,73 @@ if __name__ == "__main__":
             "name": "Leather Armor",
             "type": "armor",
             "effect": "max_health:10",
-            "cost": 40
-        }
-    }
+            "cost": 40}}
 
     # --- Test adding items ---
     print("\nAdding items to inventory...")
     add_item_to_inventory(test_char, "health_potion")
     add_item_to_inventory(test_char, "iron_sword")
     add_item_to_inventory(test_char, "leather_armor")
-    display_inventory(test_char, item_data_dict)
+    display_inventory(test_char, item_data)
 
     # --- Test using a consumable ---
     print("\nUsing a health potion...")
     try:
-        result = use_item(test_char, "health_potion", item_data_dict["health_potion"])
+        result = use_item(test_char, "health_potion", item_data["health_potion"])
         print(result)
     except (ItemNotFoundError, InvalidItemTypeError) as e:
         print(e)
-    display_inventory(test_char, item_data_dict)
+    display_inventory(test_char, item_data)
     print(f"Health: {test_char['health']}/{test_char['max_health']}")
 
     # --- Test equipping weapon ---
     print("\nEquipping iron sword...")
     try:
-        result = equip_weapon(test_char, "iron_sword", item_data_dict["iron_sword"])
+        result = equip_weapon(test_char, "iron_sword", item_data["iron_sword"])
         print(result)
     except (ItemNotFoundError, InvalidItemTypeError) as e:
         print(e)
-    display_inventory(test_char, item_data_dict)
+    display_inventory(test_char, item_data)
     print(f"Strength: {test_char['strength']}")
 
     # --- Test equipping armor ---
     print("\nEquipping leather armor...")
     try:
-        result = equip_armor(test_char, "leather_armor", item_data_dict["leather_armor"])
+        result = equip_armor(test_char, "leather_armor", item_data["leather_armor"])
         print(result)
     except (ItemNotFoundError, InvalidItemTypeError) as e:
         print(e)
-    display_inventory(test_char, item_data_dict)
+    display_inventory(test_char, item_data)
     print(f"Max Health: {test_char['max_health']}")
 
     # --- Test unequipping weapon ---
     print("\nUnequipping weapon...")
     try:
-        unequipped = unequip_weapon(test_char,item_data_dict)
+        unequipped = unequip_weapon(test_char,item_data)
         print(f"Unequipped: {unequipped}")
     except InventoryFullError as e:
         print(e)
-    display_inventory(test_char, item_data_dict)
+    display_inventory(test_char, item_data)
     print(f"Strength: {test_char['strength']}")
 
     # --- Test unequipping armor ---
     print("\nUnequipping armor...")
     try:
-        unequipped = unequip_armor(test_char,item_data_dict)
+        unequipped = unequip_armor(test_char,item_data)
         print(f"Unequipped: {unequipped}")
     except InventoryFullError as e:
         print(e)
-    display_inventory(test_char, item_data_dict)
+    display_inventory(test_char, item_data)
     print(f"Max Health: {test_char['max_health']}")
 
     # --- Test purchase and sell ---
     print("\nPurchasing and selling items...")
     try:
-        purchase_item(test_char, "health_potion", item_data_dict["health_potion"])
+        purchase_item(test_char, "health_potion", item_data["health_potion"])
         print("Purchased health potion.")
-        sell_price = sell_item(test_char, "health_potion", item_data_dict["health_potion"])
+        sell_price = sell_item(test_char, "health_potion", item_data["health_potion"])
         print(f"Sold health potion for {sell_price} gold.")
     except (InventoryFullError, InsufficientResourcesError, ItemNotFoundError) as e:
         print(e)
-    display_inventory(test_char, item_data_dict)
+    display_inventory(test_char, item_data)
     print(f"Gold: {test_char['gold']}")
