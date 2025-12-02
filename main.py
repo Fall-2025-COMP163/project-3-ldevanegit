@@ -16,7 +16,12 @@ import inventory_system
 import quest_handler
 import combat_system
 import game_data
-from custom_exceptions import *
+from custom_exceptions import (
+    InvalidCharacterClassError,
+    CharacterNotFoundError,
+    SaveFileCorruptedError,
+    ItemNotFoundError,
+    InvalidItemTypeError,MissingDataFileError,InvalidDataFormatError)
 
 # ============================================================================
 # GAME STATE
@@ -425,4 +430,42 @@ def main():
 
 if __name__ == "__main__":
     main()
-
+try:
+    load_game_data()
+    print(f"Loaded {len(all_quests)} quests and {len(all_items)} items.")
+    if all_quests:
+        first_quest_id = list(all_quests.keys())[0]
+        print(f"Sample Quest ({first_quest_id}): {all_quests[first_quest_id]}")
+    if all_items:
+            first_item_id = list(all_items.keys())[0]
+            print(f"Sample Item ({first_item_id}): {all_items[first_item_id]}")
+except (MissingDataFileError, InvalidDataFormatError) as e:
+    print(f"Error loading game data: {e}")
+    print("Creating default data files...")
+    game_data.create_default_data_files()
+    load_game_data()
+    
+    # Step 3: Quick test menu
+while True:
+    print("\n=== TEST MAIN MENU ===")
+    print("1. Create New Character")
+    print("2. View Loaded Game Data")
+    print("3. Exit")
+    choice = input("Select an option (1-3): ").strip()
+        
+    if choice == "1":
+        name = input("Enter character name: ").strip()
+        char_class = input("Enter class (Warrior, Mage, Rogue): ").strip()
+        try:
+            current_character = character_manager.create_character(name, char_class)
+            print(f"Character created: {current_character}")
+        except InvalidCharacterClassError as e:
+            print(f"Error: {e}")
+    elif choice == "2":
+        print(f"\nQuests loaded: {len(all_quests)}")
+        print(f"Items loaded: {len(all_items)}")
+    elif choice == "3":
+        print("Exiting test main module.")
+        break
+    else:
+        print("Invalid choice. Enter 1-3.")
