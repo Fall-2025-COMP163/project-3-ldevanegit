@@ -13,14 +13,13 @@ import os
 from custom_exceptions import (
     InvalidDataFormatError,
     MissingDataFileError,
-    CorruptedDataError
-)
+    CorruptedDataError)
 
 # ============================================================================
 # DATA LOADING FUNCTIONS
 # ============================================================================
 
-def load_quests(filename="data/quests.txt"):
+def load_quests(filename=os.path.join("data", "quests.txt")):
     """
     Load quest data from file
     
@@ -53,6 +52,7 @@ def load_quests(filename="data/quests.txt"):
                     try:
                         quest = parse_quest_block(block)
                         quest_id = quest["quest_id"]
+                        validate_quest_data(quest)
                         quests[quest_id] = quest
                     except KeyError as e:
                         raise InvalidDataFormatError(f"Missing key in quest block: {e}")
@@ -67,6 +67,7 @@ def load_quests(filename="data/quests.txt"):
             try:
                 quest = parse_quest_block(block)
                 quest_id = quest["quest_id"]
+                validate_quest_data(quest)
                 quests[quest_id] = quest
             except KeyError as e:
                 raise InvalidDataFormatError(f"Missing key in quest block: {e}")
@@ -85,7 +86,7 @@ def load_quests(filename="data/quests.txt"):
         raise CorruptedDataError(f"Unable to read quest file: {e}")
 
 
-def load_items(filename="data/items.txt"):
+def load_items(filename=os.path.join("data", "items.txt")):
     """
     Load item data from file
     
@@ -126,6 +127,7 @@ def load_items(filename="data/items.txt"):
         if block:
             item = parse_item_block(block)
             item_id = item["item_id"]
+            validate_item_data(item)
             items[item_id] = item
         
         return items
@@ -189,6 +191,20 @@ def validate_item_data(item_dict):
     # Check cost is integer
     if not isinstance(item_dict["cost"], int):
         raise InvalidDataFormatError(f"Item cost must be an integer, got {item_dict['cost']}")
+    # Check effect is a single-stat dictionary
+    effect = item_dict["effect"]
+    if not isinstance(effect, dict) or len(effect) != 1:
+        raise InvalidDataFormatError(f"Effect must be a single stat dictionary, got: {effect}")
+    
+    # Validate the single stat and value without unpacking
+    keys = list(effect.keys())
+    stat_key = keys[0]
+    stat_val = effect[stat_key]
+    
+    if not isinstance(stat_key, str):
+        raise InvalidDataFormatError(f"Effect stat must be a string, got: {stat_key}")
+    if not isinstance(stat_val, int):
+        raise InvalidDataFormatError(f"Effect value must be an integer, got: {stat_val}")
     
     return True
 
@@ -202,8 +218,8 @@ def create_default_data_files():
     # Create default quests.txt and items.txt files
     # Handle any file permission errors appropriately
     data_dir = "data"
-    quests_file = data_dir + "/quests.txt"
-    items_file = data_dir + "/items.txt"
+    quests_file = os.path.join(data_dir, "quests.txt")
+    items_file = os.path.join(data_dir, "items.txt")
     
     try:
         # Create data directory if it doesn't exist
@@ -352,7 +368,20 @@ def parse_item_block(lines):
             if key == "type" and value.lower() not in valid_types:
                 raise InvalidDataFormatError(f"Invalid item type: {value}")
             
-            item_data[key] = value
+            if key == "effect":
+    # Split on colon manually
+                parts = value.split(":")
+                if len(parts) != 2:
+                    raise InvalidDataFormatError(f"Invalid effect format: {value}")
+                stat = parts[0].strip()
+                val = parts[1].strip()
+                try:
+                    val = int(val)
+                except ValueError:
+                    raise InvalidDataFormatError(f"Effect value must be int: {val}")
+                item_data[key] = {stat: val}
+            else:
+                item_data[key] = value
         
         # Check required fields
         required_keys = ["item_id", "name", "type", "effect", "cost", "description"]
@@ -375,26 +404,41 @@ def parse_item_block(lines):
 if __name__ == "__main__":
     print("=== GAME DATA MODULE TEST ===")
     
-    # Test creating default files
-    # create_default_data_files()
-    
-    # Test loading quests
-    # try:
-    #     quests = load_quests()
-    #     print(f"Loaded {len(quests)} quests")
-    # except MissingDataFileError:
-    #     print("Quest file not found")
-    # except InvalidDataFormatError as e:
-    #     print(f"Invalid quest format: {e}")
-    
-    # Test loading items
-    # try:
-    #     items = load_items()
-    #     print(f"Loaded {len(items)} items")
-    # except MissingDataFileError:
-    #     print("Item file not found")
-    # except InvalidDataFormatError as e:
-    #     print(f"Invalid item format: {e}")
+    try:
+        create_default_data_files()
+        print("Default data files ensured.")
+    except Exception as e:
+        print(f"Failed to create default data files: {e}")
 
-}")
+    # Step 2: Load quests
+    try:
+        quests = load_quests()
+        print(f"Loaded {len(quests)} quests.")
+        # Display first quest as sample
+        if quests:
+            first_quest_id = list(quests.keys())[0]
+            print(f"Sample quest ({first_quest_id}): {quests[first_quest_id]}")
+    except MissingDataFileError:
+        print("Quest file not found.")
+    except InvalidDataFormatError as e:
+        print(f"Invalid quest format: {e}")
+    except Exception as e:
+        print(f"Unexpected error loading quests: {e}")
+
+    # Step 3: Load items
+    try:
+        items = load_items()
+        print(f"Loaded {len(items)} items.")
+        # Display first item as sample
+        if items:
+            first_item_id = list(items.keys())[0]
+            print(f"Sample item ({first_item_id}): {items[first_item_id]}")
+    except MissingDataFileError:
+        print("Item file not found.")
+    except InvalidDataFormatError as e:
+        print(f"Invalid item format: {e}")
+    except Exception as e:
+        print(f"Unexpected error loading items: {e}")
+
+
 
