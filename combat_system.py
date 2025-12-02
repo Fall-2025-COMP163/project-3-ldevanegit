@@ -47,8 +47,7 @@ def create_enemy(enemy_type):
     enemy_stats = {
         "goblin": {"health": 50, "strength": 8, "magic": 2, "xp_reward": 25, "gold_reward": 10},
         "orc": {"health": 80, "strength": 12, "magic": 5, "xp_reward": 50, "gold_reward": 25},
-        "dragon": {"health": 200, "strength": 25, "magic": 15, "xp_reward": 200, "gold_reward": 100}
-    }
+        "dragon": {"health": 200, "strength": 25, "magic": 15, "xp_reward": 200, "gold_reward": 100}}
     
     
     stats = enemy_stats[enemy_type_key]
@@ -59,8 +58,7 @@ def create_enemy(enemy_type):
         "strength": stats["strength"],
         "magic": stats["magic"],
         "xp_reward": stats["xp_reward"],
-        "gold_reward": stats["gold_reward"]
-    }
+        "gold_reward": stats["gold_reward"]}
 
 def get_random_enemy_for_level(character_level):
     """
@@ -127,6 +125,10 @@ class SimpleBattle:
         # Check character isn't dead
         # Loop until someone dies
         # Award XP and gold if player wins
+        self.character.setdefault('experience', 0)
+        self.character.setdefault('gold', 0)
+        #dictionary initializes cooldowns
+        self.character.setdefault('cooldowns', {})
         if is_character_dead(self.character):
             raise CharacterDeadError(f"{self.character['name']} is already dead!")
 
@@ -209,6 +211,10 @@ class SimpleBattle:
             self.display_battle_log("Invalid choice! Turn skipped.")
         # Show updated stats after action
         self.display_combat_stats(self.character, self.enemy, self.combat_active)
+        #decraments cooldowns every turn
+        for ability in self.character['cooldowns']:
+            if self.character['cooldowns'][ability] > 0:
+                self.character['cooldowns'][ability] -= 1
     
     def enemy_turn(self):
         """
@@ -242,7 +248,7 @@ class SimpleBattle:
         Returns: Integer damage amount
         """
         # TODO: Implement damage calculation
-        damage = attacker['strength'] - (defender['strength'] // 4)
+        damage = attacker.get('strength', 0) - (defender.get('strength', 0) // 4)
         return max(damage, 1)
     
     def apply_damage(self, target, damage):
@@ -286,6 +292,7 @@ class SimpleBattle:
         success = random.random() < 0.5  # 50% chance
         if success:
             self.combat_active = False
+        
         return success
 
 # ============================================================================
@@ -305,6 +312,10 @@ def use_special_ability(character, enemy):
     Returns: String describing what happened
     Raises: AbilityOnCooldownError if ability was used recently
     """
+    if character['cooldowns'].get('special', 0) > 0:
+        raise AbilityOnCooldownError(f"{character['name']}'s special ability is on cooldown!")
+    character['cooldowns']['special'] = 2
+
     char_class = character['class'].lower()
 
     if char_class == 'warrior':
@@ -317,6 +328,11 @@ def use_special_ability(character, enemy):
         return cleric_heal(character)
     else:
         return f"{character['name']} has no special ability!"
+    # Set cooldown (2 turns)
+
+    
+
+    
 
 def warrior_power_strike(character, enemy):
     """Warrior special ability"""
@@ -403,27 +419,34 @@ def display_battle_log(message):
 if __name__ == "__main__":
     print("=== COMBAT SYSTEM TEST ===")
     
-    # Test enemy creation
-    # try:
-    #     goblin = create_enemy("goblin")
-    #     print(f"Created {goblin['name']}")
-    # except InvalidTargetError as e:
-    #     print(f"Invalid enemy: {e}")
-    
-    # Test battle
-    # test_char = {
-    #     'name': 'Hero',
-    #     'class': 'Warrior',
-    #     'health': 120,
-    #     'max_health': 120,
-    #     'strength': 15,
-    #     'magic': 5
-    # }
-    #
-    # battle = SimpleBattle(test_char, goblin)
-    # try:
-    #     result = battle.start_battle()
-    #     print(f"Battle result: {result}")
-    # except CharacterDeadError:
-    #     print("Character is dead!")
+    # Create a test character
+    test_char = {
+        'name': 'Hero',
+        'class': 'Warrior',
+        'health': 120,
+        'max_health': 120,
+        'strength': 15,
+        'magic': 5,
+        'experience': 0,
+        'gold': 0,
+        'cooldowns': {}}
+
+    # Get a random enemy for character level 1
+    enemy = get_random_enemy_for_level(character_level=1)
+    print(f"Encountered enemy: {enemy['name']} (HP: {enemy['health']})")
+
+    # Start a simple battle
+    battle = SimpleBattle(test_char, enemy)
+    try:
+        result = battle.start_battle()
+        print("\n=== BATTLE RESULT ===")
+        print(f"Winner: {result['winner']}")
+        print(f"XP gained: {result['xp_gained']}")
+        print(f"Gold gained: {result['gold_gained']}")
+        print(f"Character HP after battle: {test_char['health']}/{test_char['max_health']}")
+        print(f"Character Gold: {test_char['gold']}, Experience: {test_char['experience']}")
+    except CharacterDeadError as e:
+        print(f"Cannot start battle: {e}")
+    except Exception as e:
+        print(f"Unexpected error during battle: {e}")
 
