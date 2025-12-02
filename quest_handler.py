@@ -58,7 +58,7 @@ def accept_quest(character, quest_id, quest_data_dict):
         raise InsufficientLevelError(f"Level {quest['required_level']} required for this quest!")
     
     prereq = quest.get('prerequisite', None)
-    if prereq and prereq != 'NONE' and prereq not in character.get('completed_quests', []):
+    if prereq and prereq.upper() != 'NONE' and prereq not in character.get('completed_quests', []):
         raise QuestRequirementsNotMetError(f"Prerequisite quest '{prereq}' not completed!")
 
     character.setdefault('active_quests', []).append(quest_id)
@@ -355,4 +355,5 @@ if __name__ == "__main__":
         print("PASS: slime_hunt accepted.")
     except Exception as e:
         print(f"Cannot accept: {e}")
+
 
