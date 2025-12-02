@@ -509,3 +509,4 @@ if __name__ == "__main__":
         print(e)
     display_inventory(test_char, item_data)
     print(f"Gold: {test_char['gold']}")
+
